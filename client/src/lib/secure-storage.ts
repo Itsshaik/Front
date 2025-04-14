@@ -9,6 +9,8 @@
  * - Memory-hard key derivation prevents brute force
  */
 
+import { arrayBufferToBase64, base64ToArrayBuffer } from './buffer-utils';
+
 // Constants for security parameters
 const PBKDF2_ITERATIONS = 150000; // High iteration count for memory-hard key derivation
 const SALT_BYTES = 16;
@@ -101,10 +103,11 @@ async function deriveItemKey(itemKey: string, salt: Uint8Array): Promise<CryptoK
   const masterKeyRaw = await window.crypto.subtle.exportKey('raw', masterKey);
   
   // Create a composite key of master key + item key
-  const compositeKey = new Uint8Array([
-    ...new Uint8Array(masterKeyRaw),
-    ...new TextEncoder().encode(itemKey)
-  ]);
+  const masterKeyArray = new Uint8Array(masterKeyRaw);
+  const itemKeyArray = new TextEncoder().encode(itemKey);
+  const compositeKey = new Uint8Array(masterKeyArray.length + itemKeyArray.length);
+  compositeKey.set(masterKeyArray, 0);
+  compositeKey.set(itemKeyArray, masterKeyArray.length);
   
   // Import the composite key
   const keyMaterial = await window.crypto.subtle.importKey(
@@ -175,9 +178,9 @@ export async function secureSet(key: string, value: any): Promise<void> {
     
     // Prepare the data for storage
     const encryptedData: EncryptedData = {
-      iv: Buffer.from(iv).toString('base64'),
-      salt: Buffer.from(salt).toString('base64'),
-      data: Buffer.from(encryptedBuffer).toString('base64'),
+      iv: arrayBufferToBase64(iv),
+      salt: arrayBufferToBase64(salt),
+      data: arrayBufferToBase64(encryptedBuffer),
       keyFingerprint
     };
     
@@ -208,9 +211,9 @@ export async function secureGet<T>(key: string, defaultValue?: T): Promise<T | n
     const encryptedData: EncryptedData = JSON.parse(encryptedJson);
     
     // Convert base64 strings to buffers
-    const iv = Buffer.from(encryptedData.iv, 'base64');
-    const salt = Buffer.from(encryptedData.salt, 'base64');
-    const encryptedBuffer = Buffer.from(encryptedData.data, 'base64');
+    const iv = new Uint8Array(base64ToArrayBuffer(encryptedData.iv));
+    const salt = new Uint8Array(base64ToArrayBuffer(encryptedData.salt));
+    const encryptedBuffer = base64ToArrayBuffer(encryptedData.data);
     
     // Derive the item key
     const itemKey = await deriveItemKey(key, salt);
