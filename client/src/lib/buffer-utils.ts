@@ -8,8 +8,13 @@
 import { Buffer as BufferPolyfill } from 'buffer';
 
 // Make sure Buffer is available globally for browser environments
-if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
+if (typeof window !== 'undefined') {
   (window as any).Buffer = BufferPolyfill;
+  
+  // Also make it available globally in the global scope
+  (globalThis as any).Buffer = BufferPolyfill;
+  
+  console.log("Buffer polyfill initialized", typeof BufferPolyfill);
 }
 
 /**

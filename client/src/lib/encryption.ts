@@ -154,7 +154,7 @@ export async function decryptMessage(
     // Convert base64 strings back to ArrayBuffers
     const encryptedData = base64ToArrayBuffer(encryptedContent);
     const ivData = new Uint8Array(base64ToArrayBuffer(iv));
-    const encryptedKeyData = Buffer.from(base64ToArrayBuffer(encryptedKey));
+    const encryptedKeyData = new Uint8Array(base64ToArrayBuffer(encryptedKey));
 
     // Get our identity key pair from the store
     const identityKeyPair = await signalStore.getIdentityKeyPair();
