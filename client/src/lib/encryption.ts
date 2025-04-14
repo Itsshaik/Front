@@ -1,13 +1,14 @@
 // Import our custom Signal Protocol adapter
 import { KeyHelper, type KeyPairType } from './signal-adapter';
 import { signalStore } from './signal';
+import { arrayBufferToBase64, base64ToArrayBuffer, Buffer } from './buffer-utils';
 
 // Generate a key pair for identity
-export async function generateIdentityKeyPair(): Promise<{ publicKey: Buffer, privateKey: Buffer }> {
+export async function generateIdentityKeyPair(): Promise<{ publicKey: Uint8Array, privateKey: Uint8Array }> {
   const keyPair = await KeyHelper.generateIdentityKeyPair();
   return {
-    publicKey: Buffer.from(keyPair.pubKey),
-    privateKey: Buffer.from(keyPair.privKey),
+    publicKey: new Uint8Array(keyPair.pubKey),
+    privateKey: new Uint8Array(keyPair.privKey),
   };
 }
 
@@ -59,7 +60,7 @@ export async function encryptMessage(message: string, recipientPublicKey: string
     const exportedKey = await window.crypto.subtle.exportKey('raw', key);
 
     // Convert recipient's public key from base64 to ArrayBuffer
-    const recipientPubKey = Buffer.from(recipientPublicKey, 'base64');
+    const recipientPubKey = base64ToArrayBuffer(recipientPublicKey);
 
     // Create a temporary Elliptic Curve key pair
     const ephemeralKeyPair = await window.crypto.subtle.generateKey(
@@ -133,9 +134,9 @@ export async function encryptMessage(message: string, recipientPublicKey: string
     combinedArray.set(encryptedKeyArray, ephemeralPubKeyArray.length);
     
     return {
-      encryptedContent: Buffer.from(encryptedContent).toString('base64'),
-      encryptedKey: Buffer.from(combinedArray).toString('base64'),
-      iv: Buffer.from(iv).toString('base64'),
+      encryptedContent: arrayBufferToBase64(encryptedContent),
+      encryptedKey: arrayBufferToBase64(combinedArray),
+      iv: arrayBufferToBase64(iv),
     };
   } catch (error) {
     console.error('Encryption error:', error);
@@ -151,9 +152,9 @@ export async function decryptMessage(
 ): Promise<string> {
   try {
     // Convert base64 strings back to ArrayBuffers
-    const encryptedData = Buffer.from(encryptedContent, 'base64');
-    const ivData = Buffer.from(iv, 'base64');
-    const encryptedKeyData = Buffer.from(encryptedKey, 'base64');
+    const encryptedData = base64ToArrayBuffer(encryptedContent);
+    const ivData = new Uint8Array(base64ToArrayBuffer(iv));
+    const encryptedKeyData = Buffer.from(base64ToArrayBuffer(encryptedKey));
 
     // Get our identity key pair from the store
     const identityKeyPair = await signalStore.getIdentityKeyPair();
